@@ -28,14 +28,14 @@ int main(int argc, char *argv[]){
     strcpy(username, argv[3]);
 
     struct sockaddr_in serv_addr;
-    if ((clientSocket = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-        return -2;
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(serverPort);
     if (inet_pton(AF_INET, serverHostName, &serv_addr.sin_addr) <= 0)
+        return -2;
+
+
+    if ((clientSocket = socket(AF_INET, SOCK_STREAM, 0)) < 0)
         return -3;
-
-
     if (connect(clientSocket, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
         return -4;
 

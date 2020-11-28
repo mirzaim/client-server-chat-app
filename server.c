@@ -110,8 +110,10 @@ void createC(char *username, char *groupID){
 
 void sendC(char *username, char *groupID, char *message){
     struct group *group = &groups[findGroupByGroupID(groupID)];
-    strcpy(buffer, username);
-    strcat(buffer, "> ");
+    strcpy(buffer, groupID);
+    strcat(buffer, "->");
+    strcat(buffer, username);
+    strcat(buffer, ": ");
     strcat(buffer, message);
 
     if (findMemberByUsername(group, username) >= 0){
