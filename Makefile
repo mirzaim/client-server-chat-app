@@ -1,11 +1,14 @@
 
+# default username
+u = Morteza
+
 generate:
 	@echo "Generating executable."
-	gcc server.c -o server
-	gcc client.c -o client
+	gcc server.c -o build/server
+	gcc client.c -o build/client
 
 server-run:
-	@./server 7070
+	@build/server 7070
 
 client-run:
-	@./client 127.0.0.1 7070 Morteza
+	@build/client 127.0.0.1 7070 $(u)
