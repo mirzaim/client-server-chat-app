@@ -1,19 +1,20 @@
 
-#define initHead() = {.next = NULL, .prev = NULL};
+#define initHead(name) {.next = (&name), .prev = (&name)};
+
 
 //add
-#define addNode(node, head)                 \
-        node->next = head->next;            \
-        node->prev = head;                  \
-        head->next->prev = &node;           \
-        head->next = &node;
+#define addNode(node, head)                     \
+        (node)->next = (head)->next;            \
+        (node)->prev = (head);                  \
+        (head)->next->prev = (node);            \
+        (head)->next = (node);
 
 //delete
-#define deleteNode(node, head)              \
-        node->prev->next = node->next;      \
+#define deleteNode(node, head)                  \
+        node->prev->next = node->next;          \
         node->next->prev = node->prev;
 
 //foreach
-#define foreach(head, entry)                                          \
-        for(entry = head->next; entry; entry = entry->next)
+#define foreachOnNode(entry, head)                                          \
+        for(entry = (head)->next; entry != head; entry = (entry)->next)
 

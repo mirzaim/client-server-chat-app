@@ -7,6 +7,8 @@
 #include <arpa/inet.h>
 #include <stdbool.h>
 
+#include "list.h"
+
 #define MAX_CLIENT 64
 
 
@@ -19,79 +21,86 @@ char buffer[256];
 struct client{
     int fd;
     char username[64];
+    struct client *next;
+    struct client *prev;
 };
+
 
 struct group{
     char groupID[64];
     int nMember;
-    struct client members[64];
+    struct client *members[32];
+    struct group *next;
+    struct group *prev;
 };
+
 
 int serverSocket;
 
-struct client clients[MAX_CLIENT];
-int nClient = 0;
+struct client clientHead = initHead(clientHead);
 
-struct group groups[8];
-int nGroup = 0;
+struct group groupHead = initHead(groupHead);
 
-int findClientByUsername(char *username){
-    for(int i = 0; i < nClient; i++)
-        if(strcmp(clients[i].username, username) == 0)
-            return i;
-    return -1;
+struct client *findClientByUsername(char *username){
+    struct client *client;
+    foreachOnNode(client, &clientHead)
+        if(!strcmp(client->username, username))
+            return client;
+    return NULL;
 }
 
 void addClient(int fd, char *username){
-    clients[nClient].fd = fd;
-    strcpy(clients[nClient].username, username);
-    nClient++;
+    struct client *newClient = (struct client *)malloc(sizeof(struct client));
+    newClient->fd = fd;
+    strcpy(newClient->username, username);    
+    addNode(newClient, &clientHead);
 }
 
 void closeAllClients(){
     strcpy(buffer, "close");
-    for (int i = 0; i < nClient; i++){
-        write(clients[i].fd, buffer, sizeof(buffer));
-        close(clients[i].fd);
+    struct client *client;
+    foreachOnNode(client, &clientHead){
+        write(client->fd, buffer, sizeof(buffer));
+        close(client->fd);
+        free(client);
     }
-    nClient = 0;
 }
 
 
-int findGroupByGroupID(char *groupID){
-    for (int i = 0; i < nGroup; i++)
-        if(strcmp(groups[i].groupID, groupID) == 0)
-            return i;
-    return -1;
+struct group *findGroupByGroupID(char *groupID){
+    struct group *group;
+    foreachOnNode(group, &groupHead){
+        if(!strcmp(group->groupID, groupID))
+            return group;
+    }
+    return NULL;
 }
 
-int findMemberByUsername(struct group *group, char *username){
+struct client *findMemberByUsername(struct group *group, char *username){
     for(int i = 0; i < group->nMember; i++)
-        if (strcmp(group->members[i].username, username) == 0)
-            return i;
-    return -1;
+        if (!strcmp(group->members[i]->username, username))
+            return group->members[i];
+    return NULL;
 }
 
 void closeC(char *username){
-    int i = findClientByUsername(username);
-    close(clients[i++].fd);
+    struct client *client = findClientByUsername(username);
+    close(client->fd);
     printf("%s removed.\n", username);
-    for (; i < nClient; i++)
-        clients[i-1] = clients[i];
-    nClient--;
+    deleteNode(client, clientHead);
 }
 
 
 void joinC(char *username, char *groupID){
-    struct group *group = &groups[findGroupByGroupID(groupID)];
-    if (findMemberByUsername(group, username) < 0)
-        group->members[group->nMember++] = clients[findClientByUsername(username)];
+    struct group *group = findGroupByGroupID(groupID);
+    if (!findMemberByUsername(group, username))
+        group->members[group->nMember++] = findClientByUsername(username);
 }
 
 void leaveC(char *username, char *groupID){
-    struct group *group = &groups[findGroupByGroupID(groupID)];
+    struct group *group = findGroupByGroupID(groupID);
     int i = 0;
-    for (; (i < group->nMember) && (strcmp(group->members[i].username, username)); i++);
+    for (; (i < group->nMember) && (strcmp(group->members[i]->username, username)); i++);
     i++;
     for (; i < group->nMember; i++)
         group->members[i-1] = group->members[i];
@@ -99,27 +108,28 @@ void leaveC(char *username, char *groupID){
 }
 
 void createC(char *username, char *groupID){
-    if (findGroupByGroupID(groupID) < 0){
-        strcpy(groups[nGroup].groupID, groupID);
-        groups[nGroup].nMember = 0;
-        nGroup++;
+    if (!findGroupByGroupID(groupID)){
+        struct group *group = (struct group *)malloc(sizeof(struct group));
+        strcpy(group->groupID, groupID);
+        group->nMember = 0;
+        addNode(group, &groupHead);
         printf("group %s created by %s.\n", groupID, username);
         joinC(username, groupID);
     }
 }
 
 void sendC(char *username, char *groupID, char *message){
-    struct group *group = &groups[findGroupByGroupID(groupID)];
+    struct group *group = findGroupByGroupID(groupID);
     strcpy(buffer, groupID);
     strcat(buffer, "->");
     strcat(buffer, username);
     strcat(buffer, ": ");
     strcat(buffer, message);
 
-    if (findMemberByUsername(group, username) >= 0){
+    if (findMemberByUsername(group, username)){
         printf("%s\n", buffer);
         for (int i = 0; i < group->nMember; i++)
-            write(group->members[i].fd, buffer, sizeof(buffer));
+            write(group->members[i]->fd, buffer, sizeof(buffer));
     }
 }
 
@@ -178,6 +188,7 @@ int main(int argc, char *argv[]){
 
     fd_set readfds;
     int max_fd;
+    struct client *client;
     while (flag){
         FD_ZERO(&readfds);
 
@@ -185,12 +196,12 @@ int main(int argc, char *argv[]){
         FD_SET(STDIN_FILENO, &readfds);
         max_fd = (serverSocket > STDIN_FILENO)? serverSocket : STDIN_FILENO;
 
-        for (int i = 0; i < nClient; i++){
-            FD_SET(clients[i].fd, &readfds);
-            if (clients[i].fd > max_fd)
-                max_fd = clients[i].fd;
-        }
 
+        foreachOnNode(client, &clientHead){
+            FD_SET(client->fd, &readfds);
+            if (client->fd > max_fd)
+                max_fd = client->fd;
+        }
 
         select(max_fd + 1, &readfds, NULL, NULL, NULL);
 
@@ -205,7 +216,7 @@ int main(int argc, char *argv[]){
             if ((newClient = accept(serverSocket, (struct sockaddr *)&serv_addr, (socklen_t *)&serv_addr_len)) < 0)
                 return -6;
             read(newClient, buffer, sizeof(buffer));
-            if (findClientByUsername(buffer) < 0){
+            if (!findClientByUsername(buffer)){
                 addClient(newClient, buffer);
                 strcpy(buffer, "connected\n");
                 printf("New client\n");
@@ -215,10 +226,10 @@ int main(int argc, char *argv[]){
             write(newClient, buffer, sizeof(buffer));
         }
 
-        for (int i = 0; i < nClient; i++)
-            if (FD_ISSET(clients[i].fd, &readfds)){
-                read(clients[i].fd, buffer, sizeof(buffer));
-                parse(clients[i].username, buffer);
+        foreachOnNode(client, &clientHead)
+            if (FD_ISSET(client->fd, &readfds)){
+                read(client->fd, buffer, sizeof(buffer));
+                parse(client->username, buffer);
             }
     }
 
