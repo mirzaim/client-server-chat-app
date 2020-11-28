@@ -9,8 +9,6 @@
 
 #include "list.h"
 
-#define MAX_CLIENT 64
-
 
 int serverPort;
 
@@ -83,13 +81,6 @@ struct client *findMemberByUsername(struct group *group, char *username){
     return NULL;
 }
 
-void closeC(char *username){
-    struct client *client = findClientByUsername(username);
-    close(client->fd);
-    printf("%s removed.\n", username);
-    deleteNode(client, clientHead);
-}
-
 
 void joinC(char *username, char *groupID){
     struct group *group = findGroupByGroupID(groupID);
@@ -99,12 +90,27 @@ void joinC(char *username, char *groupID){
 
 void leaveC(char *username, char *groupID){
     struct group *group = findGroupByGroupID(groupID);
-    int i = 0;
-    for (; (i < group->nMember) && (strcmp(group->members[i]->username, username)); i++);
-    i++;
-    for (; i < group->nMember; i++)
-        group->members[i-1] = group->members[i];
-    group->nMember--;
+    if (findMemberByUsername(group, username)){
+        int i = 0;
+        for (; (i < group->nMember) && (strcmp(group->members[i]->username, username)); i++);
+        i++;
+        for (; i < group->nMember; i++)
+            group->members[i-1] = group->members[i];
+        group->nMember--;
+        printf("%s left from %s\n", username, groupID);
+    }
+}
+
+void closeC(char *username){
+    struct client *client = findClientByUsername(username);
+    struct group *group;
+    foreachOnNode(group, &groupHead)
+        if(findMemberByUsername(group, client->username))
+            leaveC(client->username, group->groupID);
+    close(client->fd);
+    printf("%s removed.\n", username);
+    deleteNode(client, clientHead);
+    free(client);
 }
 
 void createC(char *username, char *groupID){
