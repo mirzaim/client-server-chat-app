@@ -4,6 +4,7 @@ u = Morteza
 
 generate:
 	@echo "Generating executable."
+	@mkdir -p ./build
 	gcc server.c -o build/server
 	gcc client.c -o build/client
 
