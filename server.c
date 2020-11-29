@@ -39,6 +39,8 @@ struct client clientHead = initHead(clientHead);
 
 struct group groupHead = initHead(groupHead);
 
+
+
 struct client *findClientByUsername(char *username){
     struct client *client;
     foreachOnNode(client, &clientHead)
@@ -47,30 +49,11 @@ struct client *findClientByUsername(char *username){
     return NULL;
 }
 
-void addClient(int fd, char *username){
-    struct client *newClient = (struct client *)malloc(sizeof(struct client));
-    newClient->fd = fd;
-    strcpy(newClient->username, username);    
-    addNode(newClient, &clientHead);
-}
-
-void closeAllClients(){
-    strcpy(buffer, "close");
-    struct client *client;
-    foreachOnNode(client, &clientHead){
-        write(client->fd, buffer, sizeof(buffer));
-        close(client->fd);
-        free(client);
-    }
-}
-
-
 struct group *findGroupByGroupID(char *groupID){
     struct group *group;
-    foreachOnNode(group, &groupHead){
+    foreachOnNode(group, &groupHead)
         if(!strcmp(group->groupID, groupID))
             return group;
-    }
     return NULL;
 }
 
@@ -81,6 +64,14 @@ struct client *findMemberByUsername(struct group *group, char *username){
     return NULL;
 }
 
+
+
+void addClient(int fd, char *username){
+    struct client *newClient = (struct client *)malloc(sizeof(struct client));
+    newClient->fd = fd;
+    strcpy(newClient->username, username);    
+    addNode(newClient, &clientHead);
+}
 
 void joinC(char *username, char *groupID){
     struct group *group = findGroupByGroupID(groupID);
@@ -136,6 +127,16 @@ void sendC(char *username, char *groupID, char *message){
         printf("%s\n", buffer);
         for (int i = 0; i < group->nMember; i++)
             write(group->members[i]->fd, buffer, sizeof(buffer));
+    }
+}
+
+void closeAllClients(){
+    strcpy(buffer, "close");
+    struct client *client;
+    foreachOnNode(client, &clientHead){
+        write(client->fd, buffer, sizeof(buffer));
+        close(client->fd);
+        free(client);
     }
 }
 
