@@ -2,6 +2,11 @@
 
 This is a **single-threaded** chat application that uses sockets for communication.
 
+## Build
+Build program to build/ subfolder.
+```bash
+make
+```
 ## Usage
 
 server-side:
