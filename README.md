@@ -3,7 +3,7 @@
 This is a **single-threaded** chat application that uses sockets for communication.
 
 ## Build
-Build program to build/ subfolder.
+Build the program to `build/` subfolder.
 ```bash
 make
 ```
@@ -25,3 +25,6 @@ client commands:
 | leave [groupID] | leave the group|
 | send [groupID] [message] | send the message to the group|
 | quit | close connection and exit from application|
+
+## License
+[MIT](https://choosealicense.com/licenses/mit/)
